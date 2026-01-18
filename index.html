@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bones</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Bones</h1>
+        </header>
+
+        <!-- Setup Screen -->
+        <section id="setup-screen" class="screen active">
+            <div class="setup-container">
+                <h2>New Game Setup</h2>
+
+                <div class="player-count-section">
+                    <label for="player-count">Number of Players</label>
+                    <div class="player-count-controls">
+                        <button type="button" id="decrease-players" class="count-btn">−</button>
+                        <input type="number" id="player-count" min="2" max="10" value="2">
+                        <button type="button" id="increase-players" class="count-btn">+</button>
+                    </div>
+                </div>
+
+                <div class="player-names-section">
+                    <h3>Player Names & Order</h3>
+                    <p class="hint">Drag to reorder or use arrows</p>
+                    <ul id="player-list" class="player-list">
+                        <!-- Player inputs will be dynamically added here -->
+                    </ul>
+                </div>
+
+                <button type="button" id="start-game" class="btn btn-primary btn-large">Start Game</button>
+            </div>
+        </section>
+
+        <!-- Active Game Screen -->
+        <section id="game-screen" class="screen">
+            <div class="game-header">
+                <div class="round-info">
+                    <span class="round-label">Round</span>
+                    <span id="current-round" class="round-number">1</span>
+                </div>
+                <div id="final-round-alert" class="final-round-alert hidden">
+                    Final Round!
+                </div>
+            </div>
+
+            <div class="players-grid" id="players-grid">
+                <!-- Player cards will be dynamically added here -->
+            </div>
+
+            <div class="score-input-section">
+                <div class="current-turn-info">
+                    <span id="current-player-name">Player 1</span>'s Turn
+                </div>
+                <div class="score-input-group">
+                    <input type="number" id="score-input" placeholder="Enter score" class="score-input">
+                    <button type="button" id="add-score" class="btn btn-primary">Add Score</button>
+                </div>
+                <div class="action-buttons">
+                    <button type="button" id="add-star" class="btn btn-star">⭐ Add Star</button>
+                    <button type="button" id="end-round" class="btn btn-secondary">End Round</button>
+                </div>
+            </div>
+
+            <div class="history-section">
+                <button type="button" id="toggle-history" class="history-toggle">
+                    <span>Score History</span>
+                    <span class="toggle-icon">▼</span>
+                </button>
+                <div id="history-panel" class="history-panel hidden">
+                    <table id="history-table" class="history-table">
+                        <thead>
+                            <tr id="history-header">
+                                <!-- Headers will be dynamically added -->
+                            </tr>
+                        </thead>
+                        <tbody id="history-body">
+                            <!-- History rows will be dynamically added -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="game-controls">
+                <button type="button" id="new-game" class="btn btn-outline">New Game</button>
+                <button type="button" id="end-game" class="btn btn-danger">End Game</button>
+            </div>
+        </section>
+
+        <!-- Win Screen -->
+        <section id="win-screen" class="screen">
+            <div class="win-container">
+                <div class="trophy">🏆</div>
+                <h2 id="winner-name">Player Wins!</h2>
+                <p id="win-condition" class="win-condition">Reached 10,000 points</p>
+
+                <div class="final-standings">
+                    <h3>Final Standings</h3>
+                    <ol id="standings-list" class="standings-list">
+                        <!-- Standings will be dynamically added -->
+                    </ol>
+                </div>
+
+                <button type="button" id="new-game-win" class="btn btn-primary btn-large">New Game</button>
+            </div>
+        </section>
+
+        <!-- Edit Score Modal -->
+        <div id="edit-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Edit Score</h3>
+                <p id="edit-info"></p>
+                <input type="number" id="edit-score-input" class="score-input">
+                <div class="modal-buttons">
+                    <button type="button" id="cancel-edit" class="btn btn-outline">Cancel</button>
+                    <button type="button" id="delete-score" class="btn btn-danger">Delete</button>
+                    <button type="button" id="save-edit" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirmation Modal -->
+        <div id="confirm-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3 id="confirm-title">Confirm</h3>
+                <p id="confirm-message"></p>
+                <div class="modal-buttons">
+                    <button type="button" id="confirm-cancel" class="btn btn-outline">Cancel</button>
+                    <button type="button" id="confirm-ok" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
