@@ -232,6 +232,9 @@ function renderPlayerList(count) {
         li.querySelector('.move-up').addEventListener('click', () => movePlayer(i, -1));
         li.querySelector('.move-down').addEventListener('click', () => movePlayer(i, 1));
 
+        // Select all text on focus for easy replacement
+        li.querySelector('.player-name-input').addEventListener('focus', (e) => e.target.select());
+
         elements.playerList.appendChild(li);
     }
 }
