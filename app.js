@@ -30,7 +30,6 @@ const elements = {
     scoreInput: document.getElementById('score-input'),
     addScore: document.getElementById('add-score'),
     addStar: document.getElementById('add-star'),
-    endRound: document.getElementById('end-round'),
     toggleHistory: document.getElementById('toggle-history'),
     historyPanel: document.getElementById('history-panel'),
     historyHeader: document.getElementById('history-header'),
@@ -124,7 +123,6 @@ function setupEventListeners() {
         if (e.key === 'Enter') addScore();
     });
     elements.addStar.addEventListener('click', addStar);
-    elements.endRound.addEventListener('click', endRound);
     elements.toggleHistory.addEventListener('click', toggleHistory);
     elements.newGame.addEventListener('click', () => showConfirm('New Game', 'Start a new game? Current progress will be saved and you can start fresh.', confirmNewGame));
     elements.endGame.addEventListener('click', () => showConfirm('End Game', 'End the game now? Final standings will be shown.', confirmEndGame));
@@ -521,38 +519,6 @@ function advanceToNextPlayer() {
             starsAwarded: {}
         });
     }
-}
-
-function endRound() {
-    // Fill in 0 for any players who haven't scored this round
-    const roundData = getCurrentRoundData();
-
-    gameState.players.forEach(player => {
-        if (roundData.scores[player.id] === undefined) {
-            roundData.scores[player.id] = 0;
-        }
-    });
-
-    // Check for final round completion
-    if (gameState.gameStatus === 'finalRound') {
-        determineWinner();
-        saveGame();
-        renderCurrentScreen();
-        return;
-    }
-
-    // Start new round
-    gameState.currentRound++;
-    gameState.currentPlayerIndex = 0;
-    gameState.rounds.push({
-        roundNum: gameState.currentRound,
-        scores: {},
-        starsAwarded: {}
-    });
-
-    saveGame();
-    renderGameScreen();
-    showToast(`Round ${gameState.currentRound} started!`);
 }
 
 function determineWinner(condition = '10k') {
