@@ -7,6 +7,7 @@ const STARS_TO_WIN = 5;
 
 // State
 let gameState = null;
+let previousPlayers = null; // Store players from last game for prefilling setup
 
 // DOM Elements
 const elements = {
@@ -173,8 +174,15 @@ function hideAllScreens() {
 
 // Setup Screen
 function renderSetupScreen() {
-    const count = parseInt(elements.playerCount.value) || 2;
-    renderPlayerList(count);
+    // Use previous players if available
+    if (previousPlayers && previousPlayers.length > 0) {
+        elements.playerCount.value = previousPlayers.length;
+        renderPlayerList(previousPlayers.length, previousPlayers);
+        previousPlayers = null; // Clear after using so manual edits persist
+    } else {
+        const count = parseInt(elements.playerCount.value) || 2;
+        renderPlayerList(count);
+    }
 }
 
 function handlePlayerCountChange() {
@@ -193,11 +201,15 @@ function adjustPlayerCount(delta) {
     renderPlayerList(count);
 }
 
-function renderPlayerList(count) {
-    // Preserve existing names
+function renderPlayerList(count, prefillPlayers = null) {
+    // Preserve existing names from DOM, or use prefill data
     const existingNames = [];
-    const inputs = elements.playerList.querySelectorAll('.player-name-input');
-    inputs.forEach(input => existingNames.push(input.value));
+    if (prefillPlayers) {
+        prefillPlayers.forEach(p => existingNames.push(p.name));
+    } else {
+        const inputs = elements.playerList.querySelectorAll('.player-name-input');
+        inputs.forEach(input => existingNames.push(input.value));
+    }
 
     elements.playerList.innerHTML = '';
 
@@ -680,10 +692,12 @@ function closeConfirmModal() {
 }
 
 function confirmNewGame() {
+    // Save previous players for prefilling setup
+    if (gameState.players && gameState.players.length > 0) {
+        previousPlayers = gameState.players.map(p => ({ name: p.name, order: p.order }));
+    }
+
     initNewGameState();
-    // Reset the setup form
-    elements.playerCount.value = 2;
-    elements.playerList.innerHTML = '';
     // Collapse history panel if open
     elements.historyPanel.classList.add('hidden');
     elements.toggleHistory.classList.remove('expanded');
