@@ -474,7 +474,8 @@ function addStar() {
     }
     roundData.starsAwarded[currentPlayer.id] = (roundData.starsAwarded[currentPlayer.id] || 0) + 1;
 
-    saveGame();
+    // Record 0 score for this turn
+    roundData.scores[currentPlayer.id] = 0;
 
     // Check for 5-star win
     if (currentPlayer.stars >= STARS_TO_WIN) {
@@ -490,6 +491,11 @@ function addStar() {
     }
 
     showToast(`⭐ Star awarded to ${currentPlayer.name}!`);
+
+    // Advance to next player
+    advanceToNextPlayer();
+
+    saveGame();
     renderGameScreen();
 }
 
