@@ -32,6 +32,7 @@ const elements = {
     scoreInput: document.getElementById('score-input'),
     addScore: document.getElementById('add-score'),
     addStar: document.getElementById('add-star'),
+    removeStar: document.getElementById('remove-star'),
     toggleHistory: document.getElementById('toggle-history'),
     historyPanel: document.getElementById('history-panel'),
     historyHeader: document.getElementById('history-header'),
@@ -165,7 +166,8 @@ function initNewGameState() {
         currentPlayerIndex: 0,
         gameStatus: 'setup',
         winner: null,
-        threshold10kTriggered: false
+        threshold10kTriggered: false,
+        tieBreakPlayers: null
     };
 }
 
@@ -186,6 +188,7 @@ function setupEventListeners() {
         if (e.key === 'Enter') addScore();
     });
     elements.addStar.addEventListener('click', addStar);
+    elements.removeStar.addEventListener('click', removeStar);
     elements.toggleHistory.addEventListener('click', toggleHistory);
     elements.newGame.addEventListener('click', () => showConfirm('New Game', 'Start a new game? Current progress will be saved and you can start fresh.', confirmNewGame));
     elements.endGame.addEventListener('click', () => showConfirm('End Game', 'End the game now? Final standings will be shown.', confirmEndGame));
@@ -218,6 +221,7 @@ function renderCurrentScreen() {
             break;
         case 'active':
         case 'finalRound':
+        case 'tieBreaker':
             elements.gameScreen.classList.add('active');
             renderGameScreen();
             break;
@@ -434,8 +438,12 @@ function startGame() {
 function renderGameScreen() {
     elements.currentRound.textContent = gameState.currentRound;
 
-    // Final round alert
-    if (gameState.gameStatus === 'finalRound') {
+    // Final round / tie breaker alert
+    if (gameState.gameStatus === 'tieBreaker') {
+        elements.finalRoundAlert.textContent = 'Tie Breaker!';
+        elements.finalRoundAlert.classList.remove('hidden');
+    } else if (gameState.gameStatus === 'finalRound') {
+        elements.finalRoundAlert.textContent = 'Final Round!';
         elements.finalRoundAlert.classList.remove('hidden');
     } else {
         elements.finalRoundAlert.classList.add('hidden');
@@ -450,12 +458,26 @@ function renderPlayersGrid() {
     elements.playersGrid.innerHTML = '';
 
     const currentRoundData = getCurrentRoundData();
+    const playersInRound = gameState.tieBreakPlayers || gameState.players;
+    const currentPlayer = playersInRound[gameState.currentPlayerIndex];
 
-    gameState.players.forEach((player, index) => {
+    gameState.players.forEach((player) => {
         const card = document.createElement('div');
         card.className = 'player-card';
-        if (index === gameState.currentPlayerIndex) {
+
+        // In tie breaker mode, highlight the current tie break player
+        // In normal mode, just check if this is the current player
+        const isCurrentPlayer = currentPlayer && player.id === currentPlayer.id;
+        const isInTieBreaker = gameState.tieBreakPlayers &&
+            gameState.tieBreakPlayers.some(p => p.id === player.id);
+
+        if (isCurrentPlayer) {
             card.classList.add('current');
+        }
+
+        // Dim players not in tie breaker during tie breaker mode
+        if (gameState.gameStatus === 'tieBreaker' && !isInTieBreaker) {
+            card.style.opacity = '0.5';
         }
 
         const totalScore = calculatePlayerTotal(player.id);
@@ -476,7 +498,8 @@ function renderPlayersGrid() {
 }
 
 function updateCurrentPlayerDisplay() {
-    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    const playersInRound = gameState.tieBreakPlayers || gameState.players;
+    const currentPlayer = playersInRound[gameState.currentPlayerIndex];
     elements.currentPlayerName.textContent = currentPlayer.name;
     elements.scoreInput.value = '';
     elements.scoreInput.focus();
@@ -507,7 +530,8 @@ function addScore() {
         return;
     }
 
-    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    const playersInRound = gameState.tieBreakPlayers || gameState.players;
+    const currentPlayer = playersInRound[gameState.currentPlayerIndex];
     let roundData = gameState.rounds.find(r => r.roundNum === gameState.currentRound);
 
     if (!roundData) {
@@ -521,12 +545,14 @@ function addScore() {
 
     roundData.scores[currentPlayer.id] = score;
 
-    // Check for 10k threshold
-    const newTotal = calculatePlayerTotal(currentPlayer.id);
-    if (newTotal >= WIN_THRESHOLD && !gameState.threshold10kTriggered) {
-        gameState.threshold10kTriggered = true;
-        gameState.gameStatus = 'finalRound';
-        showToast(`${currentPlayer.name} crossed ${WIN_THRESHOLD.toLocaleString()}! Final round!`);
+    // Check for 10k threshold (only in normal gameplay, not tie breaker)
+    if (gameState.gameStatus !== 'tieBreaker') {
+        const newTotal = calculatePlayerTotal(currentPlayer.id);
+        if (newTotal >= WIN_THRESHOLD && !gameState.threshold10kTriggered) {
+            gameState.threshold10kTriggered = true;
+            gameState.gameStatus = 'finalRound';
+            showToast(`${currentPlayer.name} crossed ${WIN_THRESHOLD.toLocaleString()}! Final round!`);
+        }
     }
 
     // Move to next player
@@ -537,7 +563,8 @@ function addScore() {
 }
 
 function addStar() {
-    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    const playersInRound = gameState.tieBreakPlayers || gameState.players;
+    const currentPlayer = playersInRound[gameState.currentPlayerIndex];
     currentPlayer.stars++;
 
     // Record star in current round
@@ -577,13 +604,47 @@ function addStar() {
     renderGameScreen();
 }
 
+function removeStar() {
+    const playersInRound = gameState.tieBreakPlayers || gameState.players;
+    const currentPlayer = playersInRound[gameState.currentPlayerIndex];
+
+    if (currentPlayer.stars <= 0) {
+        showToast(`${currentPlayer.name} has no stars to remove`);
+        return;
+    }
+
+    currentPlayer.stars--;
+
+    // Update star count in current round data if it exists
+    let roundData = gameState.rounds.find(r => r.roundNum === gameState.currentRound);
+    if (roundData && roundData.starsAwarded[currentPlayer.id]) {
+        roundData.starsAwarded[currentPlayer.id]--;
+        if (roundData.starsAwarded[currentPlayer.id] <= 0) {
+            delete roundData.starsAwarded[currentPlayer.id];
+        }
+    }
+
+    showToast(`Star removed from ${currentPlayer.name}`);
+    saveGame();
+    renderGameScreen();
+}
+
 function advanceToNextPlayer() {
+    // Determine how many players are in the current round
+    const playersInRound = gameState.tieBreakPlayers || gameState.players;
+
     gameState.currentPlayerIndex++;
 
     // Check if round is complete
-    if (gameState.currentPlayerIndex >= gameState.players.length) {
+    if (gameState.currentPlayerIndex >= playersInRound.length) {
         // All players have entered scores for this round
         gameState.currentPlayerIndex = 0;
+
+        // Check for tie breaker round completion
+        if (gameState.gameStatus === 'tieBreaker') {
+            determineWinner();
+            return;
+        }
 
         // Check for final round completion
         if (gameState.gameStatus === 'finalRound') {
@@ -602,24 +663,70 @@ function advanceToNextPlayer() {
 }
 
 function determineWinner(condition = '10k') {
-    // Find player with highest total score
-    let highestScore = -Infinity;
-    let winner = null;
+    // Determine which players to consider (all players or just tie breaker players)
+    const playersToCheck = gameState.tieBreakPlayers || gameState.players;
 
-    gameState.players.forEach(player => {
+    // Find highest score among relevant players
+    let highestScore = -Infinity;
+    playersToCheck.forEach(player => {
         const total = calculatePlayerTotal(player.id);
         if (total > highestScore) {
             highestScore = total;
-            winner = player;
         }
     });
 
-    gameState.winner = {
-        playerId: winner.id,
-        name: winner.name,
-        winCondition: condition
-    };
-    gameState.gameStatus = 'finished';
+    // Find all players with the highest score
+    const topPlayers = playersToCheck.filter(player =>
+        calculatePlayerTotal(player.id) === highestScore
+    );
+
+    // Check for ties
+    if (topPlayers.length > 1) {
+        if (condition === 'manual') {
+            // Manual end with tie - declare a tie
+            gameState.winner = {
+                isTie: true,
+                players: topPlayers.map(p => ({ playerId: p.id, name: p.name })),
+                winCondition: 'tie'
+            };
+            gameState.gameStatus = 'finished';
+            saveGame();
+            renderCurrentScreen();
+        } else {
+            // 10k threshold with tie - start tie breaker
+            startTieBreaker(topPlayers);
+        }
+    } else {
+        // Clear winner
+        const winner = topPlayers[0];
+        gameState.winner = {
+            playerId: winner.id,
+            name: winner.name,
+            winCondition: gameState.tieBreakPlayers ? 'tieBreaker' : condition
+        };
+        gameState.tieBreakPlayers = null; // Clear tie breaker state
+        gameState.gameStatus = 'finished';
+        saveGame();
+        renderCurrentScreen();
+    }
+}
+
+function startTieBreaker(tiedPlayers) {
+    gameState.tieBreakPlayers = tiedPlayers;
+    gameState.gameStatus = 'tieBreaker';
+    gameState.currentRound++;
+    gameState.currentPlayerIndex = 0;
+    gameState.rounds.push({
+        roundNum: gameState.currentRound,
+        scores: {},
+        starsAwarded: {},
+        isTieBreaker: true,
+        tieBreakPlayerIds: tiedPlayers.map(p => p.id)
+    });
+
+    const names = tiedPlayers.map(p => p.name).join(' & ');
+    showToast(`Tie breaker round! ${names} are tied at ${calculatePlayerTotal(tiedPlayers[0].id).toLocaleString()} points`);
+
     saveGame();
     renderCurrentScreen();
 }
@@ -780,15 +887,27 @@ function confirmEndGame() {
 // Win Screen
 function renderWinScreen() {
     const winner = gameState.winner;
+    const trophy = document.querySelector('.trophy');
 
-    elements.winnerName.textContent = `${winner.name} Wins!`;
-
-    if (winner.winCondition === 'stars') {
-        elements.winCondition.textContent = `Collected ${STARS_TO_WIN} stars!`;
-    } else if (winner.winCondition === 'manual') {
-        elements.winCondition.textContent = `Game ended - Highest score wins!`;
+    // Handle ties
+    if (winner.isTie) {
+        const names = winner.players.map(p => p.name).join(' & ');
+        elements.winnerName.textContent = `It's a Tie!`;
+        elements.winCondition.textContent = `${names} are tied for first place`;
+        trophy.textContent = '🤝';
     } else {
-        elements.winCondition.textContent = `Highest score after ${WIN_THRESHOLD.toLocaleString()} point threshold`;
+        elements.winnerName.textContent = `${winner.name} Wins!`;
+        trophy.textContent = '🏆';
+
+        if (winner.winCondition === 'stars') {
+            elements.winCondition.textContent = `Collected ${STARS_TO_WIN} stars!`;
+        } else if (winner.winCondition === 'manual') {
+            elements.winCondition.textContent = `Game ended - Highest score wins!`;
+        } else if (winner.winCondition === 'tieBreaker') {
+            elements.winCondition.textContent = `Won the tie breaker!`;
+        } else {
+            elements.winCondition.textContent = `Highest score after ${WIN_THRESHOLD.toLocaleString()} point threshold`;
+        }
     }
 
     // Sort players by score
