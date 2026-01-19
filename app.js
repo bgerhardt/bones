@@ -2,6 +2,7 @@
 
 // Constants
 const STORAGE_KEY = 'scoreTrackerGame';
+const THEME_KEY = 'scoreTrackerTheme';
 const WIN_THRESHOLD = 10000;
 const STARS_TO_WIN = 5;
 
@@ -56,7 +57,10 @@ const elements = {
     confirmTitle: document.getElementById('confirm-title'),
     confirmMessage: document.getElementById('confirm-message'),
     confirmCancel: document.getElementById('confirm-cancel'),
-    confirmOk: document.getElementById('confirm-ok')
+    confirmOk: document.getElementById('confirm-ok'),
+
+    // Theme
+    themeToggle: document.getElementById('theme-toggle')
 };
 
 // Edit state
@@ -70,9 +74,64 @@ let confirmCallback = null;
 
 // Initialize
 function init() {
+    initTheme();
     loadGame();
     setupEventListeners();
     renderCurrentScreen();
+}
+
+// Theme Management
+function initTheme() {
+    const savedTheme = localStorage.getItem(THEME_KEY);
+
+    if (savedTheme) {
+        // Use saved preference
+        setTheme(savedTheme);
+    } else {
+        // Follow system preference (CSS handles this, but we need to update toggle state)
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        updateToggleState(prefersDark);
+    }
+
+    // Listen for system preference changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem(THEME_KEY)) {
+            updateToggleState(e.matches);
+        }
+    });
+}
+
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem(THEME_KEY, theme);
+    updateToggleState(theme === 'dark');
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    let newTheme;
+    if (currentTheme) {
+        // Toggle from current explicit theme
+        newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    } else {
+        // No explicit theme set, toggle from system preference
+        newTheme = systemPrefersDark ? 'light' : 'dark';
+    }
+
+    setTheme(newTheme);
+}
+
+function updateToggleState(isDark) {
+    const icon = elements.themeToggle.querySelector('.theme-toggle-icon');
+    icon.textContent = isDark ? '☀️' : '🌙';
+
+    if (isDark) {
+        elements.themeToggle.classList.add('dark');
+    } else {
+        elements.themeToggle.classList.remove('dark');
+    }
 }
 
 // Load game from Local Storage
@@ -112,6 +171,9 @@ function initNewGameState() {
 
 // Setup Event Listeners
 function setupEventListeners() {
+    // Theme toggle
+    elements.themeToggle.addEventListener('click', toggleTheme);
+
     // Setup screen
     elements.playerCount.addEventListener('change', handlePlayerCountChange);
     elements.decreasePlayers.addEventListener('click', () => adjustPlayerCount(-1));
