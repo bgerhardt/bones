@@ -238,9 +238,15 @@ function renderPlayerList(count, prefillPlayers = null) {
         li.addEventListener('drop', handleDrop);
         li.addEventListener('dragleave', handleDragLeave);
 
-        // Move buttons
-        li.querySelector('.move-up').addEventListener('click', () => movePlayer(i, -1));
-        li.querySelector('.move-down').addEventListener('click', () => movePlayer(i, 1));
+        // Move buttons - read current index from dataset to handle reordering
+        li.querySelector('.move-up').addEventListener('click', function() {
+            const currentIndex = parseInt(this.closest('.player-item').dataset.index);
+            movePlayer(currentIndex, -1);
+        });
+        li.querySelector('.move-down').addEventListener('click', function() {
+            const currentIndex = parseInt(this.closest('.player-item').dataset.index);
+            movePlayer(currentIndex, 1);
+        });
 
         // Select all text on focus for easy replacement
         li.querySelector('.player-name-input').addEventListener('focus', (e) => e.target.select());

@@ -746,6 +746,11 @@ header h1 {
     .history-table td {
         padding: 8px 6px;
     }
+
+    /* Hide drag handle on mobile - drag and drop doesn't work on touch */
+    .drag-handle {
+        display: none;
+    }
 }
 
 @media (max-width: 400px) {
@@ -756,10 +761,6 @@ header h1 {
     .player-item {
         padding: 8px;
         gap: 8px;
-    }
-
-    .drag-handle {
-        display: none;
     }
 }
 
